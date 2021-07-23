@@ -503,6 +503,8 @@ fn main() {
         (BigInt::from_bytes(&(sig.r.get_element())[..])).to_str_radix(16),
         "s",
         (BigInt::from_bytes(&(sig.s.get_element())[..])).to_str_radix(16),
+        "v",
+        sig.recid.clone()
     ))
     .unwrap();
 
