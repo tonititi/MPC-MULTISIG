@@ -253,6 +253,8 @@ fn main() {
         .map(|i| bc1_vec[i as usize].e.clone())
         .collect::<Vec<EncryptionKey>>();
 
+    let y_sumJson = serde_json::to_string(&y_sum);
+    println!("shared_keys: {:?}", y_sumJson);
     let keygen_json = serde_json::to_string(&(
         party_keys,
         shared_keys,

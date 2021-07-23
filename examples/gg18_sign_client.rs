@@ -27,12 +27,13 @@ use common::{
 
 #[allow(clippy::cognitive_complexity)]
 fn main() {
-    if env::args().nth(4).is_some() {
+    if env::args().nth(5).is_some() {
         panic!("too many arguments")
     }
-    if env::args().nth(3).is_none() {
+    if env::args().nth(4).is_none() {
         panic!("too few arguments")
     }
+    let signature_filename = env::args().nth(4).unwrap_or_else(|| "".to_string());
     let message_str = env::args().nth(3).unwrap_or_else(|| "".to_string());
     let message = match hex::decode(message_str.clone()) {
         Ok(x) => x,
@@ -496,7 +497,7 @@ fn main() {
     println!("R: {:?}", sig.r.get_element());
     println!("s: {:?} \n", sig.s.get_element());
     println!("recid: {:?} \n", sig.recid.clone());
-
+    
     let sign_json = serde_json::to_string(&(
         "r",
         (BigInt::from_bytes(&(sig.r.get_element())[..])).to_str_radix(16),
@@ -508,7 +509,7 @@ fn main() {
     // check sig against secp256k1
     check_sig(&sig.r, &sig.s, &message_bn, &y_sum);
 
-    fs::write("signature".to_string(), sign_json).expect("Unable to save !");
+    fs::write(signature_filename.to_string(), sign_json).expect("Unable to save !");
 }
 
 fn format_vec_from_reads<'a, T: serde::Deserialize<'a> + Clone>(
