@@ -253,6 +253,10 @@ fn main() {
 
     let y_sumJson = serde_json::to_string(&y_sum);
     println!("shared_keys: {:?}", y_sumJson);
+    println!(
+        "shared_keys hex: {:?}",
+        BigInt::from_bytes(&y_sum.to_bytes(true)).to_str_radix(16)
+    );
     let keygen_json = serde_json::to_string(&(
         party_keys,
         shared_keys,
