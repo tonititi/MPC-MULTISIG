@@ -4,6 +4,7 @@ use std::{env, thread, time, time::Duration};
 
 use aes_gcm::aead::{Aead, NewAead};
 use aes_gcm::{Aes256Gcm, Nonce};
+use multi_party_ecdsa::protocols::multi_party_ecdsa::gg_2020::state_machine::keygen::Error;
 use rand::{rngs::OsRng, RngCore};
 
 use curv::{
@@ -47,6 +48,8 @@ pub struct Entry {
 pub struct Params {
     pub parties: String,
     pub threshold: String,
+    pub auth_pubkeys: String,
+    pub finalized_pubkeys: String,
 }
 
 #[allow(dead_code)]
@@ -93,8 +96,13 @@ where
             .json(&body)
             .send();
 
+        //println!("res {:?}", Some(res.text().unwrap()));
+
         if let Ok(mut res) = res {
             return Some(res.text().unwrap());
+        } else {
+            // let err = res.unwrap_err();
+            // println!("error {:?}", err.to_string());
         }
         thread::sleep(retry_delay);
     }
@@ -155,6 +163,23 @@ pub fn poll_for_broadcasts(
                     break;
                 }
             }
+        }
+    }
+    ans_vec
+}
+
+pub fn poll_for_auth_keys(client: &Client, delay: Duration) -> Vec<String> {
+    let mut ans_vec = Vec::new();
+    let key = "get_auth_pubkeys".to_string();
+    let index = Index { key };
+    loop {
+        // add delay to allow the server to process request:
+        thread::sleep(delay);
+        let res_body = postb(client, "get", index.clone()).unwrap();
+        let answer: Result<Entry, ()> = serde_json::from_str(&res_body).unwrap();
+        if let Ok(answer) = answer {
+            ans_vec.push(answer.value);
+            break;
         }
     }
     ans_vec

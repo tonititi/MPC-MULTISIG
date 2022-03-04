@@ -17,11 +17,11 @@ use paillier::EncryptionKey;
 use reqwest::Client;
 use sha2::Sha256;
 use std::{env, fs, time};
-
+extern crate rand;
 mod common;
 use common::{
     aes_decrypt, aes_encrypt, broadcast, poll_for_broadcasts, poll_for_p2p, postb, sendp2p, Params,
-    PartySignup, AEAD, AES_KEY_BYTES_LEN,
+    PartySignup, AEAD, AES_KEY_BYTES_LEN, poll_for_auth_keys
 };
 
 fn main() {
@@ -47,13 +47,33 @@ fn main() {
         share_count: PARTIES,
     };
 
+    let k1 = Scalar::<Secp256k1>::random();
+    let pAuthKeyBytes = k1.to_bigint().to_bytes_array().unwrap();
+    let privateAuthKey = secp256k1::SecretKey::parse(&pAuthKeyBytes).unwrap();
+    let publicKey = secp256k1::PublicKey::from_secret_key(&privateAuthKey);
+    let publicAuthKey =
+        Point::<Secp256k1>::from_bytes(&(publicKey.serialize_compressed())).unwrap();
+
     //signup:
+    let pubkeyStr = hex::encode(&(publicKey.serialize_compressed()));
+    println!("pubkeyStr {:?}", pubkeyStr);
     let (party_num_int, uuid) = match signup(&client).unwrap() {
         PartySignup { number, uuid } => (number, uuid),
     };
     println!("number: {:?}, uuid: {:?}", party_num_int, uuid);
 
     let party_keys = Keys::create(party_num_int);
+
+    // send public key for authentication later
+    assert!(broadcast(
+        &client,
+        party_num_int,
+        "auth_pubkey",
+        pubkeyStr,
+        uuid.clone()
+    )
+    .is_ok());
+
     let (bc_i, decom_i) = party_keys.phase1_broadcast_phase3_proof_of_correct_key();
 
     // send commitment to ephemeral public keys, get round 1 commitments of other parties
@@ -253,10 +273,28 @@ fn main() {
 
     let y_sumJson = serde_json::to_string(&y_sum);
     println!("shared_keys: {:?}", y_sumJson);
+
     println!(
         "shared_keys hex: {:?}",
-        BigInt::from_bytes(&y_sum.to_bytes(true)).to_str_radix(16)
+        hex::encode(&BigInt::from_bytes(&y_sum.to_bytes(true)).to_bytes())
     );
+
+    {
+        //store auth_pubkeys
+        let auth_pubkeys_ans_vec = poll_for_auth_keys(&client, delay);
+
+        let data = fs::read_to_string("params.json")
+            .expect("Unable to read params, make sure config file is present in the same folder ");
+        let mut params: Params = serde_json::from_str(&data).unwrap();
+
+        params.auth_pubkeys = auth_pubkeys_ans_vec[0].to_owned();
+        fs::write(
+            "params.json".to_string(),
+            serde_json::to_string_pretty(&params).unwrap(),
+        )
+        .expect("Unable to save !");
+    }
+
     let keygen_json = serde_json::to_string(&(
         party_keys,
         shared_keys,
@@ -264,6 +302,8 @@ fn main() {
         vss_scheme_vec,
         paillier_key_vec,
         y_sum,
+        pAuthKeyBytes,
+        publicAuthKey,
     ))
     .unwrap();
     fs::write(env::args().nth(2).unwrap(), keygen_json).expect("Unable to save !");
@@ -271,7 +311,6 @@ fn main() {
 
 pub fn signup(client: &Client) -> Result<PartySignup, ()> {
     let key = "signup-keygen".to_string();
-
     let res_body = postb(client, "signupkeygen", key).unwrap();
     serde_json::from_str(&res_body).unwrap()
 }
