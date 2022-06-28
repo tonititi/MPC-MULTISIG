@@ -42,7 +42,10 @@ pub struct Entry {
     pub key: Key,
     pub value: String,
 }
-
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub struct MessageToSign {
+    pub content: Key
+}
 #[derive(Serialize, Deserialize)]
 pub struct Params {
     pub parties: String,
@@ -100,6 +103,33 @@ where
     }
     None
 }
+pub fn postbcus(client: &Client, path: &str, body: String) -> Option<String>
+//where
+  //  T: serde::ser::Serialize,
+{
+    let addr = env::args()
+        .nth(1)
+        .unwrap_or_else(|| "http://127.0.0.1:8001".to_string());
+    let retries = 3;
+    let retry_delay = time::Duration::from_millis(250);
+    for _i in 1..retries {
+        let res = client
+            .post(&format!("{}/{}", addr, path))
+            .json(&body)
+            .send();
+
+        // if let Ok(mut res) = res {
+        //     return std::string::String::from("OK");
+        // }
+        if let Ok(mut res) = res {
+            return Some(res.text().unwrap());
+        }
+        thread::sleep(retry_delay);
+    }
+    let key = body.to_string();
+    None//return key
+}
+
 
 pub fn broadcast(
     client: &Client,
@@ -154,6 +184,8 @@ pub fn poll_for_broadcasts(
                     println!("[{:?}] party {:?} => party {:?}", round, i, party_num);
                     break;
                 }
+
+
             }
         }
     }

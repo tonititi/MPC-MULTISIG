@@ -65,6 +65,7 @@ fn main() {
         uuid.clone()
     )
     .is_ok());
+    println!("Before poll_for_broadcasts: client: {:?}, party_num_int : {:?}, PARTIES : {:?}, delay: {:?},  round1: round1, uuid {:?}", &client, party_num_int, PARTIES, delay, uuid.clone());
     let round1_ans_vec = poll_for_broadcasts(
         &client,
         party_num_int,
@@ -73,6 +74,7 @@ fn main() {
         "round1",
         uuid.clone(),
     );
+    println!("After: round1_ans_vec: client, party_num, n, delay,  round, sender_uuid,  {:?}", round1_ans_vec);
 
     let mut bc1_vec = round1_ans_vec
         .iter()
@@ -258,12 +260,12 @@ fn main() {
         BigInt::from_bytes(&y_sum.to_bytes(true)).to_str_radix(16)
     );
     let keygen_json = serde_json::to_string(&(
-        party_keys,
-        shared_keys,
-        party_num_int,
-        vss_scheme_vec,
-        paillier_key_vec,
-        y_sum,
+        party_keys, // before round 1
+        shared_keys, // after round 4
+        party_num_int, // before round 1
+        vss_scheme_vec, //after round 4
+        paillier_key_vec, // after round 5
+        y_sum, // after round 2
     ))
     .unwrap();
     fs::write(env::args().nth(2).unwrap(), keygen_json).expect("Unable to save !");

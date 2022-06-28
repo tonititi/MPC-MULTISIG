@@ -7,7 +7,7 @@ use rocket::{post, routes, State};
 use uuid::Uuid;
 
 mod common;
-use common::{Entry, Index, Key, Params, PartySignup};
+use common::{Entry, Index, MessageToSign, Key, Params, PartySignup};
 
 #[post("/get", format = "json", data = "<request>")]
 fn get(
@@ -67,18 +67,42 @@ fn signup_keygen(db_mtx: &State<RwLock<HashMap<Key, String>>>) -> Json<Result<Pa
     Json(Ok(party_signup))
 }
 
-#[post("/signupsign", format = "json")]
-fn signup_sign(db_mtx: &State<RwLock<HashMap<Key, String>>>) -> Json<Result<PartySignup, ()>> {
+#[post("/signupsign", format = "json", data = "<request>")]
+fn signup_sign(db_mtx: &State<RwLock<HashMap<Key, String>>>, request: Json<MessageToSign>) -> Json<Result<PartySignup, ()>> 
+
+{
+    let messagetosign: MessageToSign = request.0;
+    let content = (messagetosign.content).to_string();
+    let uuid_sign = Uuid::new_v4().to_string();
+    let party1 = 0;
+    
+    let party_signup_sign = PartySignup {
+        number: party1,
+        uuid: uuid_sign,
+    };
+    {
+    let mut hm = db_mtx.write().unwrap();
+        if hm.get(&messagetosign.content.to_string()).is_none() {
+            hm.insert(messagetosign.content.to_string(), serde_json::to_string(&party_signup_sign).unwrap());
+        }
+
+    }
+    //let key = messagetosign.key;
+    //let key : String = entry.to_string();
     //read parameters:
     let data = fs::read_to_string("params.json")
         .expect("Unable to read params, make sure config file is present in the same folder ");
     let params: Params = serde_json::from_str(&data).unwrap();
     let threshold = params.threshold.parse::<u16>().unwrap();
-    let key = "signup-sign".to_string();
+
+    
+    //println!("KEY: {} ", key); // key is msg to sign
+    //let  key = "signup-sign".to_string();
 
     let party_signup = {
-        let hm = db_mtx.read().unwrap();
-        let value = hm.get(&key).unwrap();
+        
+        let hm1 = db_mtx.read().unwrap();
+        let value = hm1.get(&content).unwrap();
         let client_signup: PartySignup = serde_json::from_str(value).unwrap();
         if client_signup.number < threshold + 1 {
             PartySignup {
@@ -91,10 +115,11 @@ fn signup_sign(db_mtx: &State<RwLock<HashMap<Key, String>>>) -> Json<Result<Part
                 uuid: Uuid::new_v4().to_string(),
             }
         }
+        
     };
 
     let mut hm = db_mtx.write().unwrap();
-    hm.insert(key, serde_json::to_string(&party_signup).unwrap());
+    hm.insert(content, serde_json::to_string(&party_signup).unwrap());
     Json(Ok(party_signup))
 }
 

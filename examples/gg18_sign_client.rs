@@ -22,7 +22,7 @@ use std::{env, fs, time};
 
 mod common;
 use common::{
-    broadcast, check_sig, poll_for_broadcasts, poll_for_p2p, postb, sendp2p, Params, PartySignup,
+    broadcast, check_sig, poll_for_broadcasts, poll_for_p2p, postb, postbcus, sendp2p, Params, PartySignup, MessageToSign
 };
 
 #[allow(clippy::cognitive_complexity)]
@@ -33,6 +33,12 @@ fn main() {
     if env::args().nth(4).is_none() {
         panic!("too few arguments")
     }
+    let k1 = Scalar::<Secp256k1>::random();
+   // let pAuthKeyBytes = k1.to_bigint().to_bytes_array().unwrap();
+    // let privateAuthKey = secp256k1::SecretKey::parse(&pAuthKeyBytes).unwrap();
+    // let publicKey = secp256k1::PublicKey::from_secret_key(&privateAuthKey);
+    // let publicAuthKey =
+    //     Point::<Secp256k1>::from_bytes(&(publicKey.serialize_compressed())).unwrap();
     let signature_filename = env::args().nth(4).unwrap_or_else(|| "".to_string());
     let message_str = env::args().nth(3).unwrap_or_else(|| "".to_string());
     let message = match hex::decode(message_str.clone()) {
@@ -46,13 +52,15 @@ fn main() {
     // read key file
     let data = fs::read_to_string(env::args().nth(2).unwrap())
         .expect("Unable to load keys, did you run keygen first? ");
+    //println!("number: {:?}", data);
+    //println!("number: {:?}", serde_json::<>::from_str(&data).unwrap());
     let (party_keys, shared_keys, party_id, vss_scheme_vec, paillier_key_vector, y_sum): (
         Keys,
         SharedKeys,
         u16,
         Vec<VerifiableSS<Secp256k1>>,
         Vec<EncryptionKey>,
-        Point<Secp256k1>,
+        Point<Secp256k1>
     ) = serde_json::from_str(&data).unwrap();
 
     //read parameters:
@@ -60,9 +68,9 @@ fn main() {
         .expect("Unable to read params, make sure config file is present in the same folder ");
     let params: Params = serde_json::from_str(&data).unwrap();
     let THRESHOLD = params.threshold.parse::<u16>().unwrap();
-
+    //let AUTH_PUBKEYS = params.auth_pubkeys.parse::<u16>().unwrap();
     //signup:
-    let (party_num_int, uuid) = match signup(&client).unwrap() {
+    let (party_num_int, uuid) = match signup(&client, message_str).unwrap() {
         PartySignup { number, uuid } => (number, uuid),
     };
     println!("number: {:?}, uuid: {:?}", party_num_int, uuid);
@@ -76,6 +84,7 @@ fn main() {
         uuid.clone()
     )
     .is_ok());
+     
     let round0_ans_vec = poll_for_broadcasts(
         &client,
         party_num_int,
@@ -84,6 +93,7 @@ fn main() {
         "round0",
         uuid.clone(),
     );
+
 
     let mut j = 0;
     let mut signers_vec: Vec<u16> = Vec::new();
@@ -526,9 +536,11 @@ fn format_vec_from_reads<'a, T: serde::Deserialize<'a> + Clone>(
     }
 }
 
-pub fn signup(client: &Client) -> Result<PartySignup, ()> {
-    let key = "signup-sign".to_string();
-
-    let res_body = postb(client, "signupsign", key).unwrap();
+pub fn signup(client: &Client, messagetosign : String) -> Result<PartySignup, ()> {
+    //let key = "signup-sign".to_string(); 
+    let content = messagetosign.to_string();
+    let msg = MessageToSign { content: content };
+    let res_body = postb(client, "signupsign", msg).unwrap();
+    println!("res_body: {:?} ", res_body);
     serde_json::from_str(&res_body).unwrap()
 }
