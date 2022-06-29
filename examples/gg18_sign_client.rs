@@ -22,7 +22,8 @@ use std::{env, fs, time};
 
 mod common;
 use common::{
-    broadcast, check_sig, poll_for_broadcasts, poll_for_p2p, postb, postbcus, sendp2p, Params, PartySignup, MessageToSign
+    broadcast, check_sig, poll_for_broadcasts, poll_for_p2p, postb, postbcus, sendp2p,
+    MessageToSign, Params, PartySignup,
 };
 
 #[allow(clippy::cognitive_complexity)]
@@ -34,7 +35,7 @@ fn main() {
         panic!("too few arguments")
     }
     let k1 = Scalar::<Secp256k1>::random();
-   // let pAuthKeyBytes = k1.to_bigint().to_bytes_array().unwrap();
+    // let pAuthKeyBytes = k1.to_bigint().to_bytes_array().unwrap();
     // let privateAuthKey = secp256k1::SecretKey::parse(&pAuthKeyBytes).unwrap();
     // let publicKey = secp256k1::PublicKey::from_secret_key(&privateAuthKey);
     // let publicAuthKey =
@@ -60,7 +61,7 @@ fn main() {
         u16,
         Vec<VerifiableSS<Secp256k1>>,
         Vec<EncryptionKey>,
-        Point<Secp256k1>
+        Point<Secp256k1>,
     ) = serde_json::from_str(&data).unwrap();
 
     //read parameters:
@@ -84,7 +85,6 @@ fn main() {
         uuid.clone()
     )
     .is_ok());
-     
     let round0_ans_vec = poll_for_broadcasts(
         &client,
         party_num_int,
@@ -93,7 +93,6 @@ fn main() {
         "round0",
         uuid.clone(),
     );
-
 
     let mut j = 0;
     let mut signers_vec: Vec<u16> = Vec::new();
@@ -536,8 +535,8 @@ fn format_vec_from_reads<'a, T: serde::Deserialize<'a> + Clone>(
     }
 }
 
-pub fn signup(client: &Client, messagetosign : String) -> Result<PartySignup, ()> {
-    //let key = "signup-sign".to_string(); 
+pub fn signup(client: &Client, messagetosign: String) -> Result<PartySignup, ()> {
+    //let key = "signup-sign".to_string();
     let content = messagetosign.to_string();
     let msg = MessageToSign { content: content };
     let res_body = postb(client, "signupsign", msg).unwrap();

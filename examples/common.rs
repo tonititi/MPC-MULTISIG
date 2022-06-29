@@ -44,7 +44,7 @@ pub struct Entry {
 }
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct MessageToSign {
-    pub content: Key
+    pub content: Key,
 }
 #[derive(Serialize, Deserialize)]
 pub struct Params {
@@ -127,9 +127,8 @@ pub fn postbcus(client: &Client, path: &str, body: String) -> Option<String>
         thread::sleep(retry_delay);
     }
     let key = body.to_string();
-    None//return key
+    None //return key
 }
-
 
 pub fn broadcast(
     client: &Client,
@@ -184,8 +183,6 @@ pub fn poll_for_broadcasts(
                     println!("[{:?}] party {:?} => party {:?}", round, i, party_num);
                     break;
                 }
-
-
             }
         }
     }
