@@ -46,6 +46,17 @@ pub struct Entry {
 pub struct MessageToSign {
     pub content: Key,
 }
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub struct GroupName {
+    pub groupname: Key,
+}
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub struct KeygenInput {
+    pub groupname : String,
+    pub address : String,
+    pub parties: String,
+    pub threshold: String,
+}
 #[derive(Serialize, Deserialize)]
 pub struct Params {
     pub parties: String,
@@ -173,10 +184,12 @@ pub fn poll_for_broadcasts(
         if i != party_num {
             let key = format!("{}-{}-{}", i, round, sender_uuid);
             let index = Index { key };
+            println!("INDEX INDEXX : {:?}", index);
             loop {
                 // add delay to allow the server to process request:
                 thread::sleep(delay);
                 let res_body = postb(client, "get", index.clone()).unwrap();
+                //println!("res_body {}", res_body);
                 let answer: Result<Entry, ()> = serde_json::from_str(&res_body).unwrap();
                 if let Ok(answer) = answer {
                     ans_vec.push(answer.value);
