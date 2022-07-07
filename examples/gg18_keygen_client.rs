@@ -17,16 +17,17 @@ use paillier::EncryptionKey;
 use reqwest::Client;
 use sha2::Sha256;
 use std::{env, fs, time};
+use std::vec::Vec;
 
 mod common;
 use common::{
     aes_decrypt, aes_encrypt, broadcast, poll_for_broadcasts, poll_for_p2p, postb, sendp2p,
-    GroupName, KeygenInput, Params, PartySignup, AEAD, AES_KEY_BYTES_LEN,
+    GroupName, KeygenInput, ParamsInput, Res_Body_Keygen, Params, PartySignup, AEAD, AES_KEY_BYTES_LEN,
 };
 
 fn main() {
     //INPUT PARAMETERS FROM USERS
-    // 1. endpoint 2.keyName 3.groupName 4.parties 5.threshold
+    // 1. endpoint 2.keyName 3.groupName 4. address 5.parties 6.threshold
     if env::args().nth(7).is_some() {
         panic!("too many arguments")
     }
@@ -48,7 +49,26 @@ fn main() {
     if THRESHOLD > PARTIES {
         panic!("parties should be larger than threshold")
     }
-
+    //let array_address : Vec<String> = Vec::new();
+    let array_address_env = env::args().nth(4).unwrap_or_else(|| "".to_string());
+    let array_address = array_address_env.split(",").collect::<Vec<&str>>();
+    println!("array address : {}",array_address_env);
+    println!("array_address[0] : {}", array_address[0]);
+    println!("array_address length:  {}", array_address.len());
+    //let xxx : Vec<u16> = array_address.to_string().encode_to_vec();
+    //let mut bcd = vec!(array_address);
+    //let mut xxx : [String,3] = bcd; 
+    for place in array_address.iter() {
+        println!("PLACE: {}", place)
+    }
+    if array_address.len() > PARTIES as usize {
+        panic!("array_address.len() > PARTIES")
+    }
+    if array_address.len() < PARTIES as usize {
+        panic!("array_address.len() < PARTIES")
+    }
+    //let mut users: Vec<String> = Vec::new();
+    
     let client = Client::new();
 
     // delay:
@@ -57,27 +77,32 @@ fn main() {
         threshold: THRESHOLD,
         share_count: PARTIES,
     };
-    let paramsInput = Params {
-        parties: partie_env,
-        threshold: threshold_env,
+    let paramsInput = ParamsInput {
+        parties: PARTIES,
+        threshold: THRESHOLD,
     };
 
     // SAVE FILE PARAMS.JSON
 
-    fs::write(
-        "PARAMS.JSON",
-        serde_json::to_string(&(paramsInput)).unwrap(),
-    )
-    .expect("unable to SAVE");
+    // fs::write(
+    //     "PARAMS.JSON",
+    //     serde_json::to_string(&(paramsInput)).unwrap(),
+    // )
+    // .expect("unable to SAVE");
     //let group = GroupName { groupname: group_name };
     // let keygen_input = serde_json::to_string(&(
     //     group,
     //     paramsInput,
     // )).unwrap();
+
+
     //signup:
-    let (party_num_int, uuid) = match signup(&client, group_name, address, paramsInput).unwrap() {
-        PartySignup { number, uuid } => (number, uuid),
-    };
+    let res_body1 : Res_Body_Keygen = signup(&client, group_name, address, paramsInput.clone()).unwrap();
+    let party_num_int = res_body1.number;
+    let    uuid = res_body1.uuid;
+    // let (party_num_int, uuid) = match signup(&client, group_name, address, paramsInput).OK.unwrap() {
+    //     PartySignup { number, uuid } => (number, uuid),
+    // };
     println!("number: {:?}, uuid: {:?}", party_num_int, uuid);
 
     let party_keys = Keys::create(party_num_int);
@@ -296,12 +321,15 @@ fn main() {
         vss_scheme_vec,   //after round 4
         paillier_key_vec, // after round 5
         y_sum,            // after round 2
+        array_address,
+        paramsInput.clone(),
     ))
     .unwrap();
     fs::write(env::args().nth(2).unwrap(), keygen_json).expect("Unable to save !");
+    println!("SAVE SUCCESS")
 }
 
-pub fn signup(client: &Client, groupName: String, address: String, parameters: Params) -> Result<PartySignup, ()> {
+pub fn signup(client: &Client, groupName: String, address: String, parameters: ParamsInput) -> Result<Res_Body_Keygen, ()> {
     //let key = "signup-keygen".to_string();
     let groupName = groupName.to_string();
     //let group = GroupName { groupname: groupName };

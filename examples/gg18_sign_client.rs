@@ -23,7 +23,7 @@ use std::{env, fs, time};
 mod common;
 use common::{
     broadcast, check_sig, poll_for_broadcasts, poll_for_p2p, postb, postbcus, sendp2p,
-    MessageToSign, Params, PartySignup,
+    MessageToSign, Params, PartySignup, ParamsInput, SignInput,
 };
 
 #[allow(clippy::cognitive_complexity)]
@@ -55,23 +55,31 @@ fn main() {
         .expect("Unable to load keys, did you run keygen first? ");
     //println!("number: {:?}", data);
     //println!("number: {:?}", serde_json::<>::from_str(&data).unwrap());
-    let (party_keys, shared_keys, party_id, vss_scheme_vec, paillier_key_vector, y_sum): (
+    let (party_keys, shared_keys, party_id, vss_scheme_vec, paillier_key_vector, y_sum, array_address, paramsInput): (
         Keys,
         SharedKeys,
         u16,
         Vec<VerifiableSS<Secp256k1>>,
         Vec<EncryptionKey>,
         Point<Secp256k1>,
+        Vec<&str>,
+        ParamsInput,
     ) = serde_json::from_str(&data).unwrap();
 
     //read parameters:
-    let data = fs::read_to_string("params.json")
-        .expect("Unable to read params, make sure config file is present in the same folder ");
-    let params: Params = serde_json::from_str(&data).unwrap();
-    let THRESHOLD = params.threshold.parse::<u16>().unwrap();
+    // let data = fs::read_to_string("params.json")
+    //     .expect("Unable to read params, make sure config file is present in the same folder ");
+    // let params: Params = serde_json::from_str(&data).unwrap();
+    let PARTIES = paramsInput.parties;
+    let THRESHOLD = paramsInput.threshold;
+    let paramsInput = ParamsInput {
+        parties: PARTIES,
+        threshold: THRESHOLD,
+    };
+    //let THRESHOLD = params.threshold.parse::<u16>().unwrap();
     //let AUTH_PUBKEYS = params.auth_pubkeys.parse::<u16>().unwrap();
     //signup:
-    let (party_num_int, uuid) = match signup(&client, message_str).unwrap() {
+    let (party_num_int, uuid) = match signup(&client, message_str, paramsInput).unwrap() {
         PartySignup { number, uuid } => (number, uuid),
     };
     println!("number: {:?}, uuid: {:?}", party_num_int, uuid);
@@ -535,11 +543,16 @@ fn format_vec_from_reads<'a, T: serde::Deserialize<'a> + Clone>(
     }
 }
 
-pub fn signup(client: &Client, messagetosign: String) -> Result<PartySignup, ()> {
+pub fn signup(client: &Client, messagetosign: String, parameters: ParamsInput) -> Result<PartySignup, ()> {
     //let key = "signup-sign".to_string();
     let content = messagetosign.to_string();
     let msg = MessageToSign { content: content };
-    let res_body = postb(client, "signupsign", msg).unwrap();
+    let sign_input = SignInput {
+        content: messagetosign,
+        parties: parameters.parties,
+        threshold: parameters.threshold,
+    };
+    let res_body = postb(client, "signupsign", sign_input).unwrap();
     println!("res_body: {:?} ", res_body);
     serde_json::from_str(&res_body).unwrap()
 }

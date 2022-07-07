@@ -54,8 +54,26 @@ pub struct GroupName {
 pub struct KeygenInput {
     pub groupname : String,
     pub address : String,
-    pub parties: String,
-    pub threshold: String,
+    pub parties: u16,
+    pub threshold: u16,
+}
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub struct SignInput {
+    pub content: String,
+    pub parties: u16,
+    pub threshold: u16,
+
+}
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub struct ParamsInput {
+    pub parties: u16,
+    pub threshold: u16,
+}
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub struct Res_Body_Keygen {
+    pub number : u16 ,
+    pub uuid: String,
+    pub groupKeyGen : String
 }
 #[derive(Serialize, Deserialize)]
 pub struct Params {
