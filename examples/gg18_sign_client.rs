@@ -22,12 +22,13 @@ use std::{env, fs, time};
 
 mod common;
 use common::{
-    broadcast, check_sig, poll_for_broadcasts, poll_for_p2p, postb, postbcus, sendp2p,
+    broadcast, check_sig, poll_for_broadcasts, poll_for_p2p, postb, sendp2p,
     MessageToSign, Params, PartySignup, ParamsInput, SignInput,
 };
 
 #[allow(clippy::cognitive_complexity)]
-fn main() {
+#[tokio::main]
+async fn main() {
     if env::args().nth(5).is_some() {
         panic!("too many arguments")
     }
@@ -79,7 +80,7 @@ fn main() {
     //let THRESHOLD = params.threshold.parse::<u16>().unwrap();
     //let AUTH_PUBKEYS = params.auth_pubkeys.parse::<u16>().unwrap();
     //signup:
-    let (party_num_int, uuid) = match signup(&client, message_str, paramsInput).unwrap() {
+    let (party_num_int, uuid) = match signup(&client, message_str, paramsInput).await.unwrap() {
         PartySignup { number, uuid } => (number, uuid),
     };
     println!("number: {:?}, uuid: {:?}", party_num_int, uuid);
@@ -92,6 +93,7 @@ fn main() {
         serde_json::to_string(&party_id).unwrap(),
         uuid.clone()
     )
+    .await
     .is_ok());
     let round0_ans_vec = poll_for_broadcasts(
         &client,
@@ -100,7 +102,7 @@ fn main() {
         delay,
         "round0",
         uuid.clone(),
-    );
+    ).await;
 
     let mut j = 0;
     let mut signers_vec: Vec<u16> = Vec::new();
@@ -134,6 +136,7 @@ fn main() {
         serde_json::to_string(&(com.clone(), m_a_k)).unwrap(),
         uuid.clone()
     )
+    .await
     .is_ok());
     let round1_ans_vec = poll_for_broadcasts(
         &client,
@@ -142,7 +145,7 @@ fn main() {
         delay,
         "round1",
         uuid.clone(),
-    );
+    ).await;
 
     let mut j = 0;
     let mut bc1_vec: Vec<SignBroadcastPhase1> = Vec::new();
@@ -207,6 +210,7 @@ fn main() {
                     .unwrap(),
                 uuid.clone()
             )
+            .await
             .is_ok());
             j += 1;
         }
@@ -219,7 +223,7 @@ fn main() {
         delay,
         "round2",
         uuid.clone(),
-    );
+    ).await;
 
     let mut m_b_gamma_rec_vec: Vec<MessageB> = Vec::new();
     let mut m_b_w_rec_vec: Vec<MessageB> = Vec::new();
@@ -271,6 +275,7 @@ fn main() {
         serde_json::to_string(&delta_i).unwrap(),
         uuid.clone()
     )
+    .await
     .is_ok());
     let round3_ans_vec = poll_for_broadcasts(
         &client,
@@ -279,7 +284,7 @@ fn main() {
         delay,
         "round3",
         uuid.clone(),
-    );
+    ).await;
     let mut delta_vec: Vec<Scalar<Secp256k1>> = Vec::new();
     format_vec_from_reads(
         &round3_ans_vec,
@@ -298,6 +303,7 @@ fn main() {
         serde_json::to_string(&decommit).unwrap(),
         uuid.clone()
     )
+    .await
     .is_ok());
     let round4_ans_vec = poll_for_broadcasts(
         &client,
@@ -306,7 +312,7 @@ fn main() {
         delay,
         "round4",
         uuid.clone(),
-    );
+    ).await;
 
     let mut decommit_vec: Vec<SignDecommitPhase1> = Vec::new();
     format_vec_from_reads(
@@ -342,6 +348,7 @@ fn main() {
         serde_json::to_string(&phase5_com).unwrap(),
         uuid.clone()
     )
+    .await
     .is_ok());
     let round5_ans_vec = poll_for_broadcasts(
         &client,
@@ -350,7 +357,7 @@ fn main() {
         delay,
         "round5",
         uuid.clone(),
-    );
+    ).await;
 
     let mut commit5a_vec: Vec<Phase5Com1> = Vec::new();
     format_vec_from_reads(
@@ -373,6 +380,7 @@ fn main() {
         .unwrap(),
         uuid.clone()
     )
+    .await
     .is_ok());
     let round6_ans_vec = poll_for_broadcasts(
         &client,
@@ -381,7 +389,7 @@ fn main() {
         delay,
         "round6",
         uuid.clone(),
-    );
+    ).await;
 
     let mut decommit5a_and_elgamal_and_dlog_vec: Vec<(
         Phase5ADecom1,
@@ -426,6 +434,7 @@ fn main() {
         serde_json::to_string(&phase5_com2).unwrap(),
         uuid.clone()
     )
+    .await
     .is_ok());
     let round7_ans_vec = poll_for_broadcasts(
         &client,
@@ -434,7 +443,7 @@ fn main() {
         delay,
         "round7",
         uuid.clone(),
-    );
+    ).await;
 
     let mut commit5c_vec: Vec<Phase5Com2> = Vec::new();
     format_vec_from_reads(
@@ -452,6 +461,7 @@ fn main() {
         serde_json::to_string(&phase_5d_decom2).unwrap(),
         uuid.clone()
     )
+    .await
     .is_ok());
     let round8_ans_vec = poll_for_broadcasts(
         &client,
@@ -460,7 +470,7 @@ fn main() {
         delay,
         "round8",
         uuid.clone(),
-    );
+    ).await;
 
     let mut decommit5d_vec: Vec<Phase5DDecom2> = Vec::new();
     format_vec_from_reads(
@@ -493,9 +503,10 @@ fn main() {
         serde_json::to_string(&s_i).unwrap(),
         uuid.clone()
     )
+    .await
     .is_ok());
     let round9_ans_vec =
-        poll_for_broadcasts(&client, party_num_int, THRESHOLD + 1, delay, "round9", uuid);
+        poll_for_broadcasts(&client, party_num_int, THRESHOLD + 1, delay, "round9", uuid).await;
 
     let mut s_i_vec: Vec<Scalar<Secp256k1>> = Vec::new();
     format_vec_from_reads(&round9_ans_vec, party_num_int as usize, s_i, &mut s_i_vec);
@@ -543,7 +554,7 @@ fn format_vec_from_reads<'a, T: serde::Deserialize<'a> + Clone>(
     }
 }
 
-pub fn signup(client: &Client, messagetosign: String, parameters: ParamsInput) -> Result<PartySignup, ()> {
+pub async fn signup(client: &Client, messagetosign: String, parameters: ParamsInput) -> Result<PartySignup, ()> {
     //let key = "signup-sign".to_string();
     let content = messagetosign.to_string();
     let msg = MessageToSign { content: content };
@@ -552,7 +563,7 @@ pub fn signup(client: &Client, messagetosign: String, parameters: ParamsInput) -
         parties: parameters.parties,
         threshold: parameters.threshold,
     };
-    let res_body = postb(client, "signupsign", sign_input).unwrap();
+    let res_body = postb(client, "signupsign", sign_input).await.unwrap();
     println!("res_body: {:?} ", res_body);
     serde_json::from_str(&res_body).unwrap()
 }

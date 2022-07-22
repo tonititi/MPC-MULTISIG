@@ -25,7 +25,8 @@ use common::{
     GroupName, KeygenInput, ParamsInput, Res_Body_Keygen, Params, PartySignup, AEAD, AES_KEY_BYTES_LEN,
 };
 
-fn main() {
+#[tokio::main]
+async fn main() {
     //INPUT PARAMETERS FROM USERS
     // 1. endpoint 2.keyName 3.groupName 4. address 5.parties 6.threshold
     if env::args().nth(7).is_some() {
@@ -97,7 +98,7 @@ fn main() {
 
 
     //signup:
-    let res_body1 : Res_Body_Keygen = signup(&client, group_name, address, paramsInput.clone()).unwrap();
+    let res_body1 : Res_Body_Keygen = signup(&client, group_name, address, paramsInput.clone()).await.unwrap();
     let party_num_int = res_body1.number;
     let    uuid = res_body1.uuid;
     // let (party_num_int, uuid) = match signup(&client, group_name, address, paramsInput).OK.unwrap() {
@@ -116,6 +117,7 @@ fn main() {
         serde_json::to_string(&bc_i).unwrap(),
         uuid.clone()
     )
+    .await
     .is_ok());
     //println!("Before poll_for_broadcasts: client: {:?}, party_num_int : {:?}, PARTIES : {:?}, delay: {:?},  round1: round1, uuid {:?}", &client, party_num_int, PARTIES, delay, uuid.clone());
     let round1_ans_vec = poll_for_broadcasts(
@@ -125,7 +127,7 @@ fn main() {
         delay,
         "round1",
         uuid.clone(),
-    );
+    ).await;
     println!(
         "After: round1_ans_vec: client, party_num, n, delay,  round, sender_uuid,  {:?}",
         round1_ans_vec
@@ -146,6 +148,7 @@ fn main() {
         serde_json::to_string(&decom_i).unwrap(),
         uuid.clone()
     )
+    .await
     .is_ok());
     let round2_ans_vec = poll_for_broadcasts(
         &client,
@@ -154,7 +157,7 @@ fn main() {
         delay,
         "round2",
         uuid.clone(),
-    );
+    ).await;
 
     let mut j = 0;
     let mut point_vec: Vec<Point<Secp256k1>> = Vec::new();
@@ -205,6 +208,7 @@ fn main() {
                 serde_json::to_string(&aead_pack_i).unwrap(),
                 uuid.clone()
             )
+            .await
             .is_ok());
             j += 1;
         }
@@ -217,7 +221,7 @@ fn main() {
         delay,
         "round3",
         uuid.clone(),
-    );
+    ).await;
 
     let mut j = 0;
     let mut party_shares: Vec<Scalar<Secp256k1>> = Vec::new();
@@ -244,6 +248,7 @@ fn main() {
         serde_json::to_string(&vss_scheme).unwrap(),
         uuid.clone()
     )
+    .await
     .is_ok());
     let round4_ans_vec = poll_for_broadcasts(
         &client,
@@ -252,7 +257,7 @@ fn main() {
         delay,
         "round4",
         uuid.clone(),
-    );
+    ).await;
 
     let mut j = 0;
     let mut vss_scheme_vec: Vec<VerifiableSS<Secp256k1>> = Vec::new();
@@ -285,9 +290,10 @@ fn main() {
         serde_json::to_string(&dlog_proof).unwrap(),
         uuid.clone()
     )
+    .await
     .is_ok());
     let round5_ans_vec =
-        poll_for_broadcasts(&client, party_num_int, PARTIES, delay, "round5", uuid);
+        poll_for_broadcasts(&client, party_num_int, PARTIES, delay, "round5", uuid).await;
 
     let mut j = 0;
     let mut dlog_proof_vec: Vec<DLogProof<Secp256k1, Sha256>> = Vec::new();
@@ -329,7 +335,8 @@ fn main() {
     println!("SAVE SUCCESS")
 }
 
-pub fn signup(client: &Client, groupName: String, address: String, parameters: ParamsInput) -> Result<Res_Body_Keygen, ()> {
+
+pub async fn signup(client: &Client, groupName: String, address: String, parameters: ParamsInput) -> Result<Res_Body_Keygen, ()> {
     //let key = "signup-keygen".to_string();
     let groupName = groupName.to_string();
     //let group = GroupName { groupname: groupName };
@@ -340,7 +347,8 @@ pub fn signup(client: &Client, groupName: String, address: String, parameters: P
         threshold: parameters.threshold,
     };
 
-    let res_body = postb(client, "signupkeygen", keygen_input).unwrap();
+    let res_body = postb(client, "signupkeygen", keygen_input).await.unwrap();
     println!("res_body : {}", res_body);
     serde_json::from_str(&res_body).unwrap()
 }
+
