@@ -54,6 +54,7 @@ async fn main() {
     let array_address_env = env::args().nth(4).unwrap_or_else(|| "".to_string());
     let array_address = array_address_env.split(",").collect::<Vec<&str>>();
     println!("array address : {}",array_address_env);
+    println!("array address : {}",array_address_env);
     println!("array_address[0] : {}", array_address[0]);
     println!("array_address length:  {}", array_address.len());
     //let xxx : Vec<u16> = array_address.to_string().encode_to_vec();
